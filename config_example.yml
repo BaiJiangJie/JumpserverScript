@@ -1,0 +1,26 @@
+# 
+# 脚本运行所读取的配置文件(将此文件放在和脚本同级目录中)
+#
+
+# Jumpserver 服务地址
+jms_url: http://localhost
+# Jumpserver 服务监听端口
+jms_port: 9090
+
+# 超级管理员用户名
+superuser_username: admin
+# 超级管理员密码
+superuser_password: admin
+
+# 用户邮件后缀
+email_suffix: jumpserver.com
+
+# 管理用户ID
+admin_user_id: e6e11fdc-0b96-4e32-9bb7-c55583d32f2e
+# 节点ID
+node_id: 5afa67b4-27a0-451f-a9fc-49e1dfaa6ce8
+# 系统用户ID
+system_user_id: e2202999-0ff9-40b1-b65e-428f3554a31f
+
+# 资产授权规则名称前缀
+asset_permission_name_prefix: script
