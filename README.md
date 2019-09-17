@@ -1,6 +1,6 @@
-# 脚本用来快速创建授权规则
+# 目前脚本只用来快速创建资产授权规则
 
-# 简单使用流程
+# 使用流程
  - 修改配置文件 
     - 拷贝 (cp config_example.yml config.yml )
     - 修改 (vi config.yml)
