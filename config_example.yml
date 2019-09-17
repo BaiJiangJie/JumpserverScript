@@ -3,24 +3,54 @@
 #
 
 # Jumpserver 服务地址
-jms_url: http://localhost
-# Jumpserver 服务监听端口
-jms_port: 9090
+jms_url: http://192.168.1.155
 
-# 超级管理员用户名
+# Jumpserver 服务监听端口
+jms_port: 8080
+
+# 超级管理员 Token（用于获取调用 API 所需的 Token）
+# 考虑到如果用户启用 MFA，API 获取 Token 会比较麻烦，姑且让用户先自行调用 API 获取 Token 后配置到下面）
+token: 5779c2c03bd349089512e99f55d1a325
+
+# 超级管理员用户名（用于获取调用 API 所需的 Token）
 superuser_username: admin
-# 超级管理员密码
+
+# 超级管理员密码（用于获取调用 API 所需的 Token）
 superuser_password: admin
 
-# 用户邮件后缀
+# 用户的用户名（创建授权规则中授权的用户名）
+user_username: admin
+
+# 资产IP（创建授权规则中的授权资产）
+asset_ip: 172.16.10.148
+
+# Asset Permission Actions（授权规则权限配置）
+# 可选项：["all", "connect", "upload_file", "download_file", "updownload"]
+asset_permission_actions: ["connect"]
+
+# 用户邮件后缀（用户不存在时创建用户并设置email字段：username@email_suffix）
 email_suffix: jumpserver.com
 
-# 管理用户ID
-admin_user_id: e6e11fdc-0b96-4e32-9bb7-c55583d32f2e
-# 节点ID
-node_id: 5afa67b4-27a0-451f-a9fc-49e1dfaa6ce8
-# 系统用户ID
-system_user_id: e2202999-0ff9-40b1-b65e-428f3554a31f
+# 管理用户ID（资产不存在时设置资产管理用户）
+admin_user_id:
+
+# 脚本执行时手动设置管理用户ID
+admin_user_id_manual: false
+
+# 节点ID（资产不存在时创建资产并添加到节点）
+node_id:
+
+# 脚本执行时手动设置节点ID
+node_id_manual: false
+
+# 系统用户ID（授权规则中指定的系统用户）
+system_user_id: f69a6445-bbac-4696-b1e0-2c00b3651852
+
+# 脚本执行时手动设置系统用户ID
+system_user_id_manual: false
 
 # 资产授权规则名称前缀
 asset_permission_name_prefix: script
+
+# 脚本执行时手动设置资产授权规则名称
+asset_permission_name_manual: false

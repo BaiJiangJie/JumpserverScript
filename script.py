@@ -20,13 +20,24 @@ class HTTP:
     token = None
 
     @classmethod
+    def get_default_token(cls):
+        token = CONFIG.get('token')
+        return token
+
+    @classmethod
     def get_token(cls, username, password):
-        print("获取超级管理员Token")
+        token = cls.get_default_token()
+        if token:
+            print("使用配置文件中的 Token")
+            cls.token = token
+            return
+        print("获取超级管理员 Token")
         data = {'username': username, 'password': password}
         url = "/api/authentication/v1/auth/"
         res = requests.post(cls.server + url, data)
         res_data = res.json()
         token = res_data.get('token')
+        print("使用用户名密码获取 Token")
         cls.token = token
 
     @classmethod
@@ -57,10 +68,14 @@ class User(object):
         self.email_suffix = CONFIG.get('email_suffix')
 
     def input_preconditions(self):
-        if USERNAME is None:
-            self.username = input("Please enter user username: ")
-        if self.email_suffix is None:
-            self.email_suffix = input("Please enter user email suffix (jumpserver.com): ")
+        if USERNAME:
+            self.username = USERNAME
+            return
+        default_username = CONFIG.get('user_username')
+        if default_username:
+            self.username = default_username
+            return
+        self.username = input("Please enter user username: ")
 
     def get_preconditions(self):
         self.input_preconditions()
@@ -90,6 +105,9 @@ class User(object):
         self.id = res.json().get('id')
 
     def perform(self):
+        if not self.username:
+            print("用户名不能为空")
+            sys.exit()
         if self.exist():
             return
         self.create()
@@ -100,8 +118,12 @@ class Node(object):
         self.id = CONFIG.get('node_id')
 
     def input_preconditions(self):
-        if self.id is None:
-            self.id = input("Please enter node id: ")
+        manual = CONFIG.get('node_id_manual', False)
+        if not manual:
+            return
+        if self.id is not None:
+            return
+        self.id = input("Please enter node id: ")
 
     def get_preconditions(self):
         self.input_preconditions()
@@ -127,8 +149,12 @@ class AdminUser(object):
         self.id = CONFIG.get('admin_user_id')
 
     def input_preconditions(self):
-        if self.id is None:
-            self.id = input("Please enter admin user id: ")
+        manual = CONFIG.get('admin_user_id_manual', False)
+        if not manual:
+            return
+        if self.id is not None:
+            return
+        self.id = input("Please enter admin user id: ")
 
     def get_preconditions(self):
         self.input_preconditions()
@@ -157,8 +183,14 @@ class Asset(object):
         self.node = Node()
 
     def input_preconditions(self):
-        if IP is None:
-            self.ip = input("Please enter asset ip: ")
+        if IP:
+            self.ip = IP
+            return
+        default_ip = CONFIG.get('asset_ip')
+        if default_ip:
+            self.ip = default_ip
+            return
+        self.ip = input("Please enter asset ip: ")
 
     def get_preconditions(self):
         self.input_preconditions()
@@ -195,8 +227,12 @@ class Asset(object):
         self.id = res.json().get('id')
 
     def perform(self):
-        if not self.exist():
-            self.create()
+        if not self.ip:
+            print("资产 IP 不能为空")
+            sys.exit()
+        if self.exist():
+            return
+        self.create()
 
 
 class SystemUser(object):
@@ -204,8 +240,12 @@ class SystemUser(object):
         self.id = CONFIG.get('system_user_id')
 
     def input_preconditions(self):
-        if self.id is None:
-            self.id = input("Please enter system user id: ")
+        manual = CONFIG.get('system_user_id_manual', False)
+        if not manual:
+            return
+        if self.id is not None:
+            return
+        self.id = input("Please enter system user id: ")
 
     def get_preconditions(self):
         self.input_preconditions()
@@ -229,12 +269,25 @@ class SystemUser(object):
 class AssetPermission(object):
 
     def __init__(self):
-        self.name = self.get_name()
+        self.name = None
         self.user = User()
         self.asset = Asset()
         self.system_user = SystemUser()
 
-    def get_name_prefix(self):
+    def input_preconditions(self):
+        manual = CONFIG.get('asset_permission_name_manual', False)
+        if not manual:
+            return
+        self.name = input("Please enter asset permission name: ")
+
+    def get_preconditions(self):
+        self.user.get_preconditions()
+        self.asset.get_preconditions()
+        self.system_user.get_preconditions()
+        self.input_preconditions()
+
+    @staticmethod
+    def get_name_prefix():
         prefix = CONFIG.get('asset_permission_name_prefix', None)
         return prefix
 
@@ -246,6 +299,8 @@ class AssetPermission(object):
         return suffix
 
     def get_name(self):
+        if self.name is not None:
+            return self.name
         prefix = self.get_name_prefix()
         suffix = self.get_name_suffix()
         if prefix is None:
@@ -254,25 +309,21 @@ class AssetPermission(object):
             name = "{}_{}".format(prefix, suffix)
         return name
 
-    def input_preconditions(self):
-        if self.name is None:
-            self.name = input("Please enter asset permission name: ")
-
-    def get_preconditions(self):
-        self.user.get_preconditions()
-        self.asset.get_preconditions()
-        self.system_user.get_preconditions()
-        self.input_preconditions()
+    def get_actions(self):
+        actions = CONFIG.get('asset_permission_actions', ['all'])
+        return actions
 
     def create(self):
         print("创建资产授权规则")
         url = '/api/perms/v1/asset-permissions/'
+        name = self.get_name()
+        actions = self.get_actions()
         data = {
-            'name': self.name,
+            'name': name,
             'users': [self.user.id],
             'assets': [self.asset.id],
             'system_users': [self.system_user.id],
-            'actions': ['connect'],
+            'actions': actions,
             'is_active': True
         }
         print("data: ")
