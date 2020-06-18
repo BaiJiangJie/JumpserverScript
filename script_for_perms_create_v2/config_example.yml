@@ -1,1 +1,30 @@
 #
+# Server
+server:
+  url: 'http://localhost'
+  port: 8080
+
+
+# Authentication
+# type (option):
+#   - user
+#   - token
+#   - api_key
+authentication:
+  type: 'user|token|api_key'
+  user:
+    username: 'admin'
+    password: 'admin'
+  token:
+    token: 'token_value'
+  api_key:
+    api_key: 'api_key_value'
+
+
+# Permissions
+permissions:
+  name_prefix: ''
+
+# Log
+log:
+  file_path: './execute.log'
