@@ -91,16 +91,18 @@ class Config(object):
 class Requester(object):
 
     def __init__(self):
+        self.headers = {}
+
+    def get(self, url, params=None):
+        res = requests.get(url, params)
+        return res
+
+    def post(self, url, data=None):
         pass
 
-    def get(self, url):
-        pass
-
-    def post(self, url, data):
-        pass
-
-    def exist(self, url):
-        pass
+    def exist(self, url, params=None):
+        res = self.get(url, params)
+        return res
 
 
 requester = Requester()
