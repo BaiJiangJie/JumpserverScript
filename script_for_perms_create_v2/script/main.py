@@ -1,7 +1,12 @@
 import os
 import sys
 import yaml
-import json
+import requests
+
+
+class API(object):
+    api_org_list = '/api/v1/xpack/orgs/orgs/'
+    api_org_detail = '/api/v1/xpack/orgs/orgs/{org_id}/'
 
 
 class Interactor(object):
@@ -88,13 +93,13 @@ class Requester(object):
     def __init__(self):
         pass
 
-    def get(self):
+    def get(self, url):
         pass
 
-    def post(self):
+    def post(self, url, data):
         pass
 
-    def exist(self):
+    def exist(self, url):
         pass
 
 
@@ -105,11 +110,13 @@ class Executor(object):
 
     def __init__(self):
         self.org_name = None
-        self.user_username = None
-        self.system_user_username = None
-        self.assets = []
+        self.users_username = None
+        self.system_users_username = None
+        self.assets_hostname = []
 
     def check_org_name_exist(self):
+        url = API.api_org_list
+        requester.exist(url)
         pass
 
     def get_org_name(self):
