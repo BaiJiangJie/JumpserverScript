@@ -186,7 +186,7 @@ class Requester(object):
 
     def init_headers(self):
         self.headers.update({
-            'Authorization': 'Bearer 940fa8a5570a462a8818bcaed45d069c',
+            'Authorization': 'Bearer b653185f6904489580865c17479dae07',
             'Content-Type': 'application/json'
         })
 
@@ -231,7 +231,12 @@ class Executor(object):
         url = jumpserver_api.api_org_list
         interactor.send_to_user_debug('Request url: {}'.format(url))
         res = requester.get(url)
-        return res.json()
+        if res.status_code == 200:
+            org_list = res.json()
+        else:
+            org_list = []
+            interactor.send_to_user_error(res.text)
+        return org_list
 
     def check_org_name_exist(self, org_name):
         org_list = self.get_org_list()
@@ -525,17 +530,13 @@ class Executor(object):
         }
         url = jumpserver_api.api_asset_permission_list
         res = requester.post(url, data=data)
-        if res.status_code == 200:
+        if res.status_code in [200, 201]:
             permission = res.json()
             interactor.send_to_user_info('Create asset permission success: {}'.format(json.dumps(permission, indent=4)))
             return True, permission
         else:
-            interactor.send_to_user_error('Create asset permission error: {}'.format(res.text))
+            interactor.send_to_user_error('Create asset permission error code: {}, text: {}'.format(res.status_code, res.text))
             return False, None
-
-    def show_data_for_create_permission_result(self, data):
-        json_data = json.dumps(data, indent=4)
-        interactor.send(json_data)
 
     def ask_user_if_continue_create_permission(self):
         pass
@@ -547,9 +548,9 @@ class Executor(object):
         description = '''
         Summary of this script execution is as follows:
         
-        Asset permission created count: {}
+        Asset permissions created count: {}
         
-        Asset permissions: {}
+        Asset permissions created: {}
         
         '''.format(len(self.asset_permissions_created), ', '.join(asset_permissions_name))
         interactor.send(description)
@@ -577,7 +578,6 @@ class Executor(object):
                 assets=data['assets']
             )
             self.asset_permissions_created.append(data)
-            self.show_data_for_create_permission_result(data)
 
             continue_create_permission = interactor.ask_user_if_continue_create_permission()
             if continue_create_permission:
