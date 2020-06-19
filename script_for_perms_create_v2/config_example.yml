@@ -23,7 +23,7 @@ authentication:
 
 # Permissions
 permissions:
-  name_prefix: ''
+  name_prefix: 'script'
 
 # Log
 log:
