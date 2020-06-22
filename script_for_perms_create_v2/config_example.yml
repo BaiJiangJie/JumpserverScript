@@ -18,7 +18,8 @@ authentication:
   token:
     token: 'token_value'
   api_key:
-    api_key: 'api_key_value'
+    access_key_id: 'key_id'
+    access_key_secret: 'key_secret'
 
 
 # Permissions
