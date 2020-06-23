@@ -149,7 +149,7 @@ class ServerProxy:
             return permission
         else:
             client_proxy.print_error(res.reason)
-            client_proxy.print_error(res.content)
+            client_proxy.print_error(res.content.decode())
             return None
 
     def test_connectivity(self):
@@ -161,7 +161,7 @@ class ServerProxy:
             logger.info('测试服务可连接性...成功')
             return True, None
         else:
-            logger.error(res.content)
+            logger.error(res.content.decode())
             return False, res.reason
 
 
@@ -286,6 +286,7 @@ class Logger:
 
     def write(self, msg):
         self.file.write('{} \n'.format(msg))
+        self.file.flush()
 
     def info(self, msg):
         self.write('[INFO] {}'.format(msg))
