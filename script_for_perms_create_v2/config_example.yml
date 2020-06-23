@@ -1,14 +1,16 @@
 #
 # Server
-server:
-  url: 'http://localhost'
-  port: 8080
+server: 'http://localhost'
 
 
 # Authentication
 authentication:
   type: 'api_key'
   api_key:
-    access_key_id: 'key_id'
-    access_key_secret: 'key_secret'
+    access_key_id: '40bbc49d-e715-4664-82ce-7b622695550d'
+    access_key_secret: 'b104126a-638f-4268-bf2d-a39e7810af4b'
 
+
+# Log
+log:
+  file_path: './script_execute.log'

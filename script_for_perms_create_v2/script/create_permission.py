@@ -10,6 +10,7 @@ import csv
 import os
 import yaml
 import json
+import datetime
 import requests
 from urllib.parse import urljoin
 from httpsig.requests_auth import HTTPSignatureAuth
@@ -20,17 +21,15 @@ class Config:
 
     def __init__(self, config_dict):
         # server
-        self.server_url = config_dict['server']['url']
-        self.server_port = config_dict['server']['port']
-        self.server = '{}:{}'.format(self.server_url, self.server_port)
+        self.server = config_dict['server']
 
         # authentication
         self.authentication_type = config_dict['authentication']['type']
         self.authentication_api_key_access_key_id = config_dict['authentication']['api_key']['access_key_id']
         self.authentication_api_key_access_key_secret = config_dict['authentication']['api_key']['access_key_secret']
 
-        # asset permission
-        self.asset_permission_name_prefix = config_dict['asset_permission']['name_prefix']
+        # log
+        self.log_file_path = config_dict['log']['file_path']
 
 
 class ServerProxy:
@@ -38,13 +37,16 @@ class ServerProxy:
 
     def __init__(self):
         self.http_signature_auth = self.generate_http_signature_auth()
-        self._org_name = None
+        self.org = None
 
-    def set_org_name(self, name):
-        self._org_name = name
+    def set_org(self, org):
+        self.org = org
 
     def get_org_name(self):
-        return self._org_name
+        return self.org['name']
+
+    def get_org_id(self):
+        return self.org['id']
 
     def generate_url(self, path):
         url = urljoin(config.server, path)
@@ -60,8 +62,9 @@ class ServerProxy:
         return auth
 
     def generate_headers(self):
+        org_id = self.get_org_id()
         return {
-            'X-JMS-ORG': self.get_org_name(),
+            'X-JMS-ORG': org_id,
             'Content-Type': 'application/json',
             'Accept': 'application/json',
             'Date': "Mon, 17 Feb 2014 06:11:05 GMT"
@@ -74,18 +77,25 @@ class ServerProxy:
         json_data = json.dumps(data)
         return requests.post(url, json_data, **kwargs)
 
-    def request(self, method, *args, **kwargs):
+    def request(self, method, url, data=None, params=None, **kwargs):
         assert method in ['get', 'post'], \
             'method `{}` not allowed, must is `get` or `post`'.format(method)
 
         kwargs['headers'] = self.generate_headers()
         kwargs['auth'] = self.http_signature_auth
 
+        logger.info('向服务端发送请求')
+        logger.info('url: {}'.format(url))
+        for k, v in kwargs.items():
+            logger.info('{}: {}'.format(k, v))
+
         if method == 'get':
-            return self.get(*args, **kwargs)
+            logger.info('params: {}'.format(params))
+            return self.get(url, params=params, **kwargs)
 
         if method == 'post':
-            return self.post(*args, **kwargs)
+            logger.info('data: {}'.format(data))
+            return self.post(url, data=data, **kwargs)
 
     def get_org(self, org_name):
         url = self.generate_url('/api/v1/orgs/orgs/')
@@ -103,6 +113,8 @@ class ServerProxy:
         res = self.request('get', url, params=params)
         if res.status_code == 200:
             users = res.json()
+            logger.info('User username: {}'.format(username))
+            logger.info('Get data form server: {}'.format(users))
             if len(users) == 1:
                 return users[0]
         return None
@@ -120,30 +132,34 @@ class ServerProxy:
     def get_asset(self, hostname):
         url = self.generate_url('/api/v1/assets/assets/')
         params = {'hostname': hostname}
-        res = self.request(url, params=params)
+        res = self.request('get', url, params=params)
         if res.status_code == 200:
             assets = res.json()
             if len(assets) == 1:
-                return assets
+                return assets[0]
         return None
 
     def create_asset_permission(self, data):
         url = self.generate_url('/api/v1/perms/asset-permissions/')
-        res = self.request(url, data=data)
+        res = self.request('post', url, data=data)
         if res.status_code in [200, 201]:
             permission = res.json()
             return permission
         else:
             client_proxy.print_error(res.reason)
+            client_proxy.print_error(res.content)
             return None
 
     def test_connectivity(self):
-        self.set_org_name('DEFAULT')
+        logger.info('测试服务可连接性')
+        self.set_org({'name': 'DEFAULT', 'id': ''})
         url = self.generate_url('/api/health/')
         res = self.request('get', url)
         if res.status_code == 200:
+            logger.info('测试服务可连接性...成功')
             return True, None
         else:
+            logger.error(res.content)
             return False, res.reason
 
 
@@ -218,11 +234,11 @@ class ClientProxy:
         self.print(msg)
 
     def print_script_description(self):
-        msg = ''' 欢迎使用 JumpServer 资产授权规则创建脚本 '''
+        msg = '''欢迎使用 JumpServer 资产授权规则创建脚本 '''
         self.print_info(msg)
 
     def print_asset_permission_data_display(self, data):
-        msg = ''' 即将使用下面的数据创建授权规则:
+        msg = '''即将使用下面的数据创建授权规则:
         
         名称: {}
         用户: {}
@@ -237,16 +253,20 @@ class ClientProxy:
         self.print(msg)
 
     def print_asset_permissions_created_display(self, permissions_created):
+        client_proxy.print_info('本次脚本执行创建授的权规则详细信息如下: ')
         for index, permission in enumerate(permissions_created):
-            json_data = json.dumps(permission)
-            client_proxy.print('{} {} {}'.format('-'*10, index, '-'*10))
+            json_data = json.dumps(permission, indent=4)
+            client_proxy.print('{} {} {}'.format('-'*30, index, '-'*30))
             client_proxy.print(json_data)
 
-        msg = ''' 本次脚本执行创建的授权规则如下:
+        permissions_name = [permission['name'] for permission in permissions_created]
+
+        msg = '''本次脚本执行创建的授权规则汇总信息如下如下:
         
         总数: {}
         资产授权规则: {}
-        '''
+        
+        '''.format(len(permissions_created), permissions_name)
         client_proxy.print(msg)
 
     def quit(self, msg=None):
@@ -254,6 +274,26 @@ class ClientProxy:
             self.print_info(msg)
         self.print_info('Quit')
         sys.exit(0)
+
+
+class Logger:
+    def __init__(self):
+        self.file = open(config.log_file_path, 'a')
+
+    def write(self, msg):
+        self.file.write('{} \n'.format(msg))
+
+    def info(self, msg):
+        self.write('[INFO] {}'.format(msg))
+
+    def debug(self, msg):
+        self.write('[DEBUG] {}'.format(msg))
+
+    def error(self, msg):
+        self.write('[ERROR] {}'.format(msg))
+
+    def __delete__(self, instance):
+        instance.file.close()
 
 
 def before_creation():
@@ -387,14 +427,14 @@ def create():
     while True:
         org_name = client_proxy.input_org_name()
         if org_name.upper() == 'DEFAULT':
-            org = {'name': org_name.upper()}
+            org = {'name': org_name.upper(), 'id': ''}
         else:
             org = server_proxy.get_org(org_name)
             if org is None:
                 client_proxy.print_error('组织 `{}` 不存在'.format(org_name))
                 continue
-        server_proxy.set_org_name(org['name'])
         data_operator.set_org(org)
+        server_proxy.set_org(org)
         break
 
     # name
@@ -514,6 +554,11 @@ def init_server_proxy():
     return ServerProxy()
 
 
+def init_logger():
+    """ 初始化日志记录者"""
+    return Logger()
+
+
 def init_config():
     """ 初始化配置
     :return: Config
@@ -575,9 +620,15 @@ if __name__ == '__main__':
     * 初始化客户端代理者
     * 初始化配置
     * 初始化服务代理者
+    * 初始化日志记录者
     * 进入主程序
     """
     client_proxy = init_client_proxy()
     config = init_config()
     server_proxy = init_server_proxy()
+    logger = init_logger()
+
+    logger.info('-'*50)
+    logger.info('时间: {}'.format(datetime.datetime.now()))
+
     main()
