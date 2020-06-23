@@ -236,6 +236,19 @@ class ClientProxy:
         )
         self.print(msg)
 
+    def print_asset_permissions_created_display(self, permissions_created):
+        for index, permission in enumerate(permissions_created):
+            json_data = json.dumps(permission)
+            client_proxy.print('{} {} {}'.format('-'*10, index, '-'*10))
+            client_proxy.print(json_data)
+
+        msg = ''' 本次脚本执行创建的授权规则如下:
+        
+        总数: {}
+        资产授权规则: {}
+        '''
+        client_proxy.print(msg)
+
     def quit(self, msg=None):
         if msg:
             self.print_info(msg)
@@ -244,6 +257,14 @@ class ClientProxy:
 
 
 def before_creation():
+    """ 执行创建前的准备工作
+
+    * 测试配置服务端的可连接性
+    * 展示脚本的描述信息
+
+    :return: None
+    """
+    # test server connectivity
     client_proxy.print_info('测试服务连接性...')
     success, msg = server_proxy.test_connectivity()
     if not success:
@@ -251,10 +272,14 @@ def before_creation():
     else:
         client_proxy.print_info('测试服务连接性...成功')
 
+    # print script description
     client_proxy.print_script_description()
 
 
 class AssetPermissionDataOperator:
+    """
+    对用户输入的数据以及从服务端获取回来的数据进行方便存取
+    """
 
     def __init__(self):
         self.name = ''
@@ -340,6 +365,21 @@ class AssetPermissionDataOperator:
 
 
 def create():
+    """ 创建授权规则
+
+    * 获取用户输入组织名称
+    * 获取用户输入资产授权规则名称
+    * 获取用户输入用户的用户名
+    * 获取用户输入用户的系统用户名称
+    * 获取用户输入资产的数据来源 (csv/手动输入)
+        - 获取用户输入csv文件路径
+        - 获取用户输入资产的主机名称
+    * 展示即将待创建使用的数据
+    * 等待用户确认创建
+    * 执行创建
+
+    :return: 创建成功的资产授权规则信息, dict
+    """
 
     data_operator = AssetPermissionDataOperator()
 
@@ -445,10 +485,19 @@ def create():
             json_data = json.dumps(permission, indent=4)
             client_proxy.print(json_data)
             client_proxy.print_info('创建资产授权规则...成功')
+    else:
+        permission = None
+        client_proxy.print_info('取消创建授权规则')
+
+    return permission
 
 
-def after_creation():
-    pass
+def after_creation(permissions_created):
+    """
+    :param permissions_created: 本次脚本执行创建的授权规则
+    :return:
+    """
+    client_proxy.print_asset_permissions_created_display(permissions_created)
 
 
 def init_client_proxy():
@@ -493,28 +542,41 @@ def init_config():
 def main():
     """ 程序入口
 
-    使命:
+    功能:
     *
-    * 获取配置文件
-    * 初始化配置
-    * 初始化服务代理者
-    * 初始化客户端代理者
-    * 创建前准备工作
-    * 进入创建流程
-    * 创建后收尾工作
+    * 执行创建前的准备工作
+    * 创建
+    * 执行创建后的收尾工作
     *
     """
+    permissions_created = []
+
     before_creation()
 
     if not client_proxy.input_if_continue():
         client_proxy.quit()
 
-    create()
+    while True:
+        permission = create()
 
-    after_creation()
+        if permission is not None:
+            permissions_created.append(permission)
+
+        if client_proxy.input_if_continue():
+            continue
+
+        break
+
+    after_creation(permissions_created)
 
 
 if __name__ == '__main__':
+    """
+    * 初始化客户端代理者
+    * 初始化配置
+    * 初始化服务代理者
+    * 进入主程序
+    """
     client_proxy = init_client_proxy()
     config = init_config()
     server_proxy = init_server_proxy()

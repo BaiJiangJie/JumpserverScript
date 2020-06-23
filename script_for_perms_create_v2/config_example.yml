@@ -6,26 +6,9 @@ server:
 
 
 # Authentication
-# type (option):
-#   - user
-#   - token
-#   - api_key
 authentication:
-  type: 'user|token|api_key'
-  user:
-    username: 'admin'
-    password: 'admin'
-  token:
-    token: 'token_value'
+  type: 'api_key'
   api_key:
     access_key_id: 'key_id'
     access_key_secret: 'key_secret'
 
-
-# Permissions
-permissions:
-  name_prefix: 'script'
-
-# Log
-log:
-  file_path: './execute.log'
