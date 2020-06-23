@@ -1,9 +1,16 @@
+# 创建JumpServer资产授权脚本配置文件
 #
+
 # Server
+# JumpServer 服务地址
 server: 'http://localhost'
 
 
 # Authentication
+# 认证信息配置
+
+# 字段 type 不需要做修改
+# 字段 access_key_id 和 access_key_secret 请从 JumpServer 管理页面，右上角个人图标下拉菜单中点击 API Key，进入列表，创建并填写
 authentication:
   type: 'api_key'
   api_key:
@@ -12,5 +19,6 @@ authentication:
 
 
 # Log
+# 脚本执行的日志文件路径
 log:
   file_path: './script_execute.log'
