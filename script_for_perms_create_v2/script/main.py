@@ -13,6 +13,7 @@ import os
 import yaml
 import json
 import datetime
+import getpass
 import requests
 from urllib.parse import urljoin
 from httpsig.requests_auth import HTTPSignatureAuth
@@ -48,7 +49,6 @@ class ServerProxy:
     """ 服务代理者- 负责与JumpServer进行交互 """
 
     def __init__(self):
-        self.token = None
         self.token_data = None
         self.org = None
 
@@ -56,7 +56,7 @@ class ServerProxy:
         self.token_data = token_data
 
     def get_token(self):
-        return '{} {}'.format(self.token['keyword'], self.token['token'])
+        return '{} {}'.format(self.token_data['keyword'], self.token_data['token'])
 
     def set_org(self, org):
         self.org = org
@@ -80,7 +80,7 @@ class ServerProxy:
         )
         return auth
 
-    def generate_headers(self):
+    def generate_http_headers(self):
         org_id = self.get_org_id()
         headers = {
             'X-JMS-ORG': org_id,
@@ -90,7 +90,7 @@ class ServerProxy:
         }
         if config.authentication_type_is_user():
             headers.update({
-                'Authorization': self.token
+                'Authorization': self.get_token()
             })
         return headers
 
@@ -105,7 +105,7 @@ class ServerProxy:
         assert method in ['get', 'post'], \
             'method `{}` not allowed, must is `get` or `post`'.format(method)
 
-        kwargs['headers'] = self.generate_headers()
+        kwargs['headers'] = self.generate_http_headers()
         if config.authentication_type_is_api_key():
             kwargs['auth'] = self.generate_http_signature_auth()
         kwargs['verify'] = config.ssl_verify
@@ -128,9 +128,11 @@ class ServerProxy:
         res = self.request('get', url)
         if res.status_code in [200]:
             org_list = res.json()
+            logger.info(org_list)
             for org in org_list:
                 if org['name'] == org_name:
                     return org
+        logger.error(res.reason)
         return None
 
     def get_user(self, username):
@@ -288,15 +290,15 @@ class ClientProxy:
         return opt
 
     def input_login_username(self):
-        opt = self.input('username: ')
+        opt = self.input('Username: ')
+        return opt
+
+    def input_login_password(self):
+        opt = getpass.getpass()
         return opt
 
     def input_login_mfa_code(self):
         opt = self.input('[MFA]code: ')
-        return opt
-
-    def input_login_password(self):
-        opt = self.input('password:')
         return opt
 
     def input_if_continue(self):
@@ -364,7 +366,7 @@ class Logger:
         self.file = open(config.log_file_path, 'a')
 
     def write(self, msg):
-        self.file.write('{} \n'.format(msg))
+        self.file.write('[{}] {} \n'.format(datetime.datetime.now(), msg))
         self.file.flush()
 
     def info(self, msg):
