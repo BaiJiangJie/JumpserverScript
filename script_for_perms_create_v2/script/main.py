@@ -86,7 +86,7 @@ class ServerProxy:
             'X-JMS-ORG': org_id,
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'Date': "Mon, 17 Feb 2014 06:11:05 GMT"
+            'Date': "Mon, 17 Feb 2014 06:11:05 GMT",
         }
         if config.authentication_type_is_user():
             headers.update({
@@ -192,6 +192,11 @@ class ServerProxy:
         }
         auth_url = self.generate_url('/api/v1/authentication/tokens/')
         res = session.post(auth_url, data=auth_data)
+        if res.status_code == 201:
+            user_token_data = res.json()
+            logger.info(json.dumps(user_token_data, indent=4))
+            return user_token_data
+
         if res.status_code != 200:
             client_proxy.print_error(res.content.decode())
             return None
@@ -387,6 +392,7 @@ class Logger:
 def before_creation():
     """ 执行创建前的准备工作
 
+    * 获取用户token（如果使用用户名/密码认证）
     * 测试配置服务端的可连接性
     * 展示脚本的描述信息
 
