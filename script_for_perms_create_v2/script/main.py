@@ -27,8 +27,9 @@ class Config:
 
         # authentication
         self.authentication_type = config_dict['authentication']['type']
-        self.authentication_api_key_access_key_id = config_dict['authentication']['api_key']['access_key_id']
-        self.authentication_api_key_access_key_secret = config_dict['authentication']['api_key']['access_key_secret']
+        if self.authentication_type == 'api_key':
+            self.authentication_api_key_access_key_id = config_dict['authentication']['api_key']['access_key_id']
+            self.authentication_api_key_access_key_secret = config_dict['authentication']['api_key']['access_key_secret']
 
         # ssl verify
         self.ssl_verify = config_dict['requests']['ssl_verify']
@@ -36,13 +37,26 @@ class Config:
         # log
         self.log_file_path = config_dict['log']['file_path']
 
+    def authentication_type_is_api_key(self):
+        return self.authentication_type == 'api_key'
+
+    def authentication_type_is_user(self):
+        return self.authentication_type == 'user'
+
 
 class ServerProxy:
     """ 服务代理者- 负责与JumpServer进行交互 """
 
     def __init__(self):
-        self.http_signature_auth = self.generate_http_signature_auth()
+        self.token = None
+        self.token_data = None
         self.org = None
+
+    def set_token_data(self, token_data):
+        self.token_data = token_data
+
+    def get_token(self):
+        return '{} {}'.format(self.token['keyword'], self.token['token'])
 
     def set_org(self, org):
         self.org = org
@@ -68,12 +82,17 @@ class ServerProxy:
 
     def generate_headers(self):
         org_id = self.get_org_id()
-        return {
+        headers = {
             'X-JMS-ORG': org_id,
             'Content-Type': 'application/json',
             'Accept': 'application/json',
             'Date': "Mon, 17 Feb 2014 06:11:05 GMT"
         }
+        if config.authentication_type_is_user():
+            headers.update({
+                'Authorization': self.token
+            })
+        return headers
 
     def get(self, url, params=None, **kwargs):
         return requests.get(url, params=params, **kwargs)
@@ -87,7 +106,8 @@ class ServerProxy:
             'method `{}` not allowed, must is `get` or `post`'.format(method)
 
         kwargs['headers'] = self.generate_headers()
-        kwargs['auth'] = self.http_signature_auth
+        if config.authentication_type_is_api_key():
+            kwargs['auth'] = self.generate_http_signature_auth()
         kwargs['verify'] = config.ssl_verify
 
         logger.info('向服务端发送请求')
@@ -156,6 +176,49 @@ class ServerProxy:
             client_proxy.print_error(res.content.decode())
             return None
 
+    def get_user_token(self, username, password):
+        if not username or not password:
+            client_proxy.print_error('username 或 password 不能为空')
+            return None
+
+        session = requests.session()
+        auth_data = {
+            'username': username,
+            'password': password
+        }
+        auth_url = self.generate_url('/api/v1/authentication/tokens/')
+        res = session.post(auth_url, data=auth_data)
+        if res.status_code != 200:
+            client_proxy.print_error(res.content.decode())
+            return None
+
+        response_data = res.json()
+        if response_data['error'] == 'mfa_required':
+            mfa_url = self.generate_url('/api/v1/authentication/mfa/challenge/')
+            while True:
+                mfa_code = client_proxy.input_login_mfa_code()
+                if len(mfa_code) != 6 or not mfa_code.isdigit():
+                    client_proxy.print_error('MFA code 输入有误，请输入6位数字...')
+                    continue
+                break
+            mfa_data = {
+                'code': mfa_code
+            }
+            res = session.post(mfa_url, data=mfa_data)
+
+            if res.status_code == 200:
+                res = session.post(auth_url, data=auth_data)
+                if res.status_code == 201:
+                    user_token_data = res.json()
+                    logger.info(json.dumps(user_token_data, indent=4))
+                    return user_token_data
+                else:
+                    client_proxy.print_error(res.content.decode())
+                    return None
+            else:
+                client_proxy.print_error(res.content.decode())
+                return None
+
     def test_connectivity(self):
         logger.info('测试服务可连接性')
         self.set_org({'name': 'DEFAULT', 'id': ''})
@@ -222,6 +285,18 @@ class ClientProxy:
 
     def input_asset_hostname(self):
         opt = self.input('输入授权资产的主机名: ')
+        return opt
+
+    def input_login_username(self):
+        opt = self.input('username: ')
+        return opt
+
+    def input_login_mfa_code(self):
+        opt = self.input('[MFA]code: ')
+        return opt
+
+    def input_login_password(self):
+        opt = self.input('password:')
         return opt
 
     def input_if_continue(self):
@@ -313,6 +388,22 @@ def before_creation():
 
     :return: None
     """
+    # print script description
+    client_proxy.print_script_description()
+
+    # 获取用户token
+    if config.authentication_type == 'user':
+        while True:
+            username = client_proxy.input_login_username()
+            password = client_proxy.input_login_password()
+            token_data = server_proxy.get_user_token(username=username, password=password)
+            if token_data is None:
+                client_proxy.print_error('获取用户Token失败...')
+            else:
+                server_proxy.set_token_data(token_data)
+                client_proxy.print_info('获取用户Token成功...')
+                break
+
     # test server connectivity
     client_proxy.print_info('测试服务连接性...')
     success, msg = server_proxy.test_connectivity()
@@ -320,9 +411,6 @@ def before_creation():
         client_proxy.quit('服务连接性测试...失败: {}'.format(msg))
     else:
         client_proxy.print_info('测试服务连接性...成功')
-
-    # print script description
-    client_proxy.print_script_description()
 
 
 class AssetPermissionDataOperator:

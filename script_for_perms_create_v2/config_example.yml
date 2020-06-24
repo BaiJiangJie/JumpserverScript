@@ -11,11 +11,13 @@ server: 'http://localhost'
 
 # 字段 type 不需要做修改
 # 字段 access_key_id 和 access_key_secret 请从 JumpServer 管理页面，右上角个人图标下拉菜单中点击 API Key，进入列表，创建并填写
+# type: options: api_key、user
 authentication:
-  type: 'api_key'
-  api_key:
-    access_key_id: '40bbc49d-e715-4664-82ce-7b622695550d'
-    access_key_secret: 'b104126a-638f-4268-bf2d-a39e7810af4b'
+  type: 'user'
+  # type: 'api_key'
+  # api_key:
+    # access_key_id: '40bbc49d-e715-4664-82ce-7b622695550d'
+    # access_key_secret: 'b104126a-638f-4268-bf2d-a39e7810af4b'
 
 # API requests
 # ssl_verify options: True、False
