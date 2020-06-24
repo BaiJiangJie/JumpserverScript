@@ -106,9 +106,11 @@ class ServerProxy:
             'method `{}` not allowed, must is `get` or `post`'.format(method)
 
         kwargs['headers'] = self.generate_http_headers()
+
+        kwargs['verify'] = config.ssl_verify
+
         if config.authentication_type_is_api_key():
             kwargs['auth'] = self.generate_http_signature_auth()
-        kwargs['verify'] = config.ssl_verify
 
         logger.info('向服务端发送请求')
         logger.info('url: {}'.format(url))
