@@ -30,6 +30,9 @@ class Config:
         self.authentication_api_key_access_key_id = config_dict['authentication']['api_key']['access_key_id']
         self.authentication_api_key_access_key_secret = config_dict['authentication']['api_key']['access_key_secret']
 
+        # ssl verify
+        self.ssl_verify = config_dict['requests']['ssl_verify']
+
         # log
         self.log_file_path = config_dict['log']['file_path']
 
@@ -85,6 +88,7 @@ class ServerProxy:
 
         kwargs['headers'] = self.generate_headers()
         kwargs['auth'] = self.http_signature_auth
+        kwargs['verify'] = config.ssl_verify
 
         logger.info('向服务端发送请求')
         logger.info('url: {}'.format(url))

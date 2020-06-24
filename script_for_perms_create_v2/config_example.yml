@@ -17,6 +17,11 @@ authentication:
     access_key_id: '40bbc49d-e715-4664-82ce-7b622695550d'
     access_key_secret: 'b104126a-638f-4268-bf2d-a39e7810af4b'
 
+# API requests
+# ssl_verify options: True、False
+requests:
+  ssl_verify: False
+
 
 # Log
 # 脚本执行的日志文件路径
