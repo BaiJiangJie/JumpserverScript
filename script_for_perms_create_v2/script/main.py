@@ -197,36 +197,39 @@ class ServerProxy:
             logger.info(json.dumps(user_token_data, indent=4))
             return user_token_data
 
-        if res.status_code != 200:
-            client_proxy.print_error(res.content.decode())
-            return None
+        if res.status_code == 200:
+            response_data = res.json()
+            if response_data['error'] == 'mfa_required':
+                mfa_url = self.generate_url('/api/v1/authentication/mfa/challenge/')
+                while True:
+                    mfa_code = client_proxy.input_login_mfa_code()
+                    if len(mfa_code) != 6 or not mfa_code.isdigit():
+                        client_proxy.print_error('MFA code 输入有误，请输入6位数字...')
+                        continue
+                    break
+                mfa_data = {
+                    'code': mfa_code
+                }
+                res = session.post(mfa_url, data=mfa_data)
 
-        response_data = res.json()
-        if response_data['error'] == 'mfa_required':
-            mfa_url = self.generate_url('/api/v1/authentication/mfa/challenge/')
-            while True:
-                mfa_code = client_proxy.input_login_mfa_code()
-                if len(mfa_code) != 6 or not mfa_code.isdigit():
-                    client_proxy.print_error('MFA code 输入有误，请输入6位数字...')
-                    continue
-                break
-            mfa_data = {
-                'code': mfa_code
-            }
-            res = session.post(mfa_url, data=mfa_data)
-
-            if res.status_code == 200:
-                res = session.post(auth_url, data=auth_data)
-                if res.status_code == 201:
-                    user_token_data = res.json()
-                    logger.info(json.dumps(user_token_data, indent=4))
-                    return user_token_data
+                if res.status_code == 200:
+                    res = session.post(auth_url, data=auth_data)
+                    if res.status_code == 201:
+                        user_token_data = res.json()
+                        logger.info(json.dumps(user_token_data, indent=4))
+                        return user_token_data
+                    else:
+                        client_proxy.print_error(res.content.decode())
+                        return None
                 else:
                     client_proxy.print_error(res.content.decode())
                     return None
             else:
                 client_proxy.print_error(res.content.decode())
                 return None
+        else:
+            client_proxy.print_error(res.content.decode())
+            return None
 
     def test_connectivity(self):
         logger.info('测试服务可连接性')
